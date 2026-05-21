@@ -211,6 +211,95 @@ python evaluation_MARDM.py --name MARDM_DDPM_XL --model "MARDM-DDPM-XL" --datase
 ```
 </details>
 
+## ☁️ Deploying as a Serverless Endpoint on RunPod
+<details>
+
+This repo ships with everything needed to publish MARDM on the
+[RunPod Hub](https://docs.runpod.io/hub/publishing-guide):
+
+```
+.runpod/hub.json      # deployment metadata + GPU/env configuration
+.runpod/tests.json    # automated test cases (single-prompt inference)
+Dockerfile            # CUDA 12.1 + PyTorch 2.2 image, bakes in MARDM-SiT-XL
+handler.py            # RunPod serverless handler (text-to-motion)
+requirements.txt      # pip dependencies installed inside the image
+```
+
+### Publish
+1. Push the changes to GitHub.
+2. Cut a GitHub **release** — the Hub indexes releases, not commits.
+3. In the [RunPod console](https://console.runpod.io/hub) → *Hub* → *Get Started*, paste this repo's URL and follow the prompts.
+4. The build/test pipeline runs against `.runpod/tests.json`; once it passes, request review.
+
+To ship an update, just publish a new GitHub release.
+
+### Request payload
+```json
+{
+  "input": {
+    "text_prompt": "A person is running on a treadmill.",
+    "motion_length": 0,
+    "seed": 3407,
+    "cfg": 4.5,
+    "time_steps": 18,
+    "temperature": 1.0,
+    "repeat_times": 1,
+    "dataset": "t2m",
+    "model_name": "MARDM_SiT_XL",
+    "model_arch": "MARDM-SiT-XL",
+    "render_video": false,
+    "hard_pseudo_reorder": false
+  }
+}
+```
+
+- `text_prompt` accepts a string **or** a list of strings (batched).
+- `motion_length` accepts a single int or a list; `0`/`null` triggers the length estimator.
+- `render_video: true` additionally returns a base64-encoded MP4 per sample (slower, larger payload).
+
+### Response
+```json
+{
+  "dataset": "t2m",
+  "model_name": "MARDM_SiT_XL",
+  "device": "cuda",
+  "results": [
+    {
+      "repeat": 0,
+      "index": 0,
+      "prompt": "A person is running on a treadmill.",
+      "length": 96,
+      "joints_shape": [96, 22, 3],
+      "joints_b64": "<base64-encoded .npy float32 array>"
+    }
+  ]
+}
+```
+
+Decode the joints client-side with:
+```python
+import base64, io, numpy as np
+joints = np.load(io.BytesIO(base64.b64decode(result["joints_b64"])))
+```
+
+### Local Docker test
+```bash
+docker build -t mardm-runpod .
+docker run --rm --gpus all -p 8000:8000 mardm-runpod \
+    python -u handler.py --rp_serve_api --rp_api_port 8000
+curl -X POST http://localhost:8000/runsync \
+     -H 'Content-Type: application/json' \
+     -d '{"input": {"text_prompt": "A person is running on a treadmill."}}'
+```
+
+### Notes
+- The image bakes in **MARDM-SiT-XL on HumanML3D**. Override at build time:
+  `docker build --build-arg MARDM_GDRIVE_ID=<new_id> ...`
+- The handler uses `utils/eval_mean_std/<dataset>` as the `Mean.npy` / `Std.npy` substitute (matches the README guidance for inference-only setups), so the full HumanML3D / KIT-ML datasets are **not** required at runtime.
+- Recommended GPU pool: `ADA_24` / `AMPERE_24` or larger (see `.runpod/hub.json`).
+
+</details>
+
 ## 🎏 Temporal Editing
 <details>
 

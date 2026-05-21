@@ -1,0 +1,37 @@
+{
+    "$schema": "https://schemas.runpod.io/tests.json",
+    "tests": [
+        {
+            "name": "single_prompt_auto_length",
+            "input": {
+                "text_prompt": "A person is running on a treadmill.",
+                "motion_length": 0,
+                "seed": 3407,
+                "cfg": 4.5,
+                "time_steps": 18,
+                "repeat_times": 1,
+                "render_video": false
+            },
+            "timeout": 180000
+        },
+        {
+            "name": "single_prompt_fixed_length",
+            "input": {
+                "text_prompt": "A man slowly waves his right hand.",
+                "motion_length": 80,
+                "seed": 42,
+                "cfg": 4.5,
+                "time_steps": 18,
+                "repeat_times": 1,
+                "render_video": false
+            },
+            "timeout": 180000
+        }
+    ],
+    "config": {
+        "gpuTypeId": "NVIDIA RTX A5000",
+        "gpuCount": 1,
+        "allowedCudaVersions": ["12.1", "12.2", "12.3", "12.4", "12.5"],
+        "env": []
+    }
+}

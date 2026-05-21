@@ -1,0 +1,63 @@
+{
+    "$schema": "https://schemas.runpod.io/hub.json",
+    "title": "MARDM Text-to-Motion",
+    "description": "MARDM (CVPR 2025) - Rethinking Diffusion for Text-Driven Human Motion Generation. Generates 3D human motion sequences from natural-language descriptions on the HumanML3D / KIT-ML skeletons.",
+    "type": "serverless",
+    "category": "video",
+    "iconUrl": "https://raw.githubusercontent.com/neu-vi/MARDM/main/MARDM.png",
+    "config": {
+        "runsOn": "GPU",
+        "containerDiskInGb": 25,
+        "gpuCount": 1,
+        "gpuIds": "ADA_24,AMPERE_24,ADA_48,AMPERE_48,AMPERE_80,ADA_80",
+        "allowedCudaVersions": ["12.1", "12.2", "12.3", "12.4", "12.5"],
+        "env": [
+            {
+                "key": "DEFAULT_DATASET",
+                "value": "t2m"
+            },
+            {
+                "key": "DEFAULT_MODEL_NAME",
+                "value": "MARDM_SiT_XL"
+            },
+            {
+                "key": "DEFAULT_MODEL_ARCH",
+                "value": "MARDM-SiT-XL"
+            },
+            {
+                "key": "DEFAULT_AE_NAME",
+                "value": "AE"
+            },
+            {
+                "key": "DEFAULT_AE_ARCH",
+                "value": "AE_Model"
+            },
+            {
+                "key": "CHECKPOINTS_DIR",
+                "value": "/workspace/checkpoints"
+            },
+            {
+                "key": "DATASET_DIR",
+                "value": "/workspace/datasets"
+            }
+        ],
+        "presets": [
+            {
+                "name": "SiT-XL (HumanML3D, recommended)",
+                "defaults": {
+                    "DEFAULT_DATASET": "t2m",
+                    "DEFAULT_MODEL_NAME": "MARDM_SiT_XL",
+                    "DEFAULT_MODEL_ARCH": "MARDM-SiT-XL"
+                }
+            },
+            {
+                "name": "DDPM-XL (HumanML3D)",
+                "defaults": {
+                    "DEFAULT_DATASET": "t2m",
+                    "DEFAULT_MODEL_NAME": "MARDM_DDPM_XL",
+                    "DEFAULT_MODEL_ARCH": "MARDM-DDPM-XL"
+                }
+            }
+        ]
+    }
+}
