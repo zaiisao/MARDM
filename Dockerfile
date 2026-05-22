@@ -24,6 +24,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /workspace/requirements.txt
 RUN pip install --upgrade pip && pip install -r /workspace/requirements.txt
 
+# Pre-download OpenAI CLIP ViT-B/32 (~338 MB) into the image so cold starts
+# don't pay the runtime download cost. MARDM's text encoder calls clip.load
+# at first use and it would otherwise pull these weights every cold start.
+RUN python -c "import clip; clip.load('ViT-B/32', device='cpu')"
+
 # ---------------------------------------------------------------------------
 # Download HumanML3D MARDM-SiT-XL checkpoints. Override via --build-arg if you
 # want a different model bundle.

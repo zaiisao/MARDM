@@ -79,18 +79,23 @@ def _load_models(dataset_name: str, model_name: str, model_arch: str,
                  ae_name: str, ae_arch: str):
     dim_pose, _, _ = _dataset_geometry(dataset_name)
 
+    # Load checkpoints straight to the target device when CUDA is available --
+    # skips the CPU staging copy that torch.load(..., map_location="cpu")
+    # would otherwise do, shaving several seconds off cold start.
+    ckpt_device = str(DEVICE) if DEVICE.type == "cuda" else "cpu"
+
     ae = AE_models[ae_arch](input_width=dim_pose)
     ae_ckpt_file = "latest.tar" if dataset_name == "t2m" else "net_best_fid.tar"
     ae_ckpt = torch.load(
         pjoin(CHECKPOINTS_DIR, dataset_name, ae_name, "model", ae_ckpt_file),
-        map_location="cpu",
+        map_location=ckpt_device,
     )
     ae.load_state_dict(ae_ckpt["ae"])
 
     mardm = MARDM_models[model_arch](ae_dim=ae.output_emb_width, cond_mode="text")
     mardm_ckpt = torch.load(
         pjoin(CHECKPOINTS_DIR, dataset_name, model_name, "model", "latest.tar"),
-        map_location="cpu",
+        map_location=ckpt_device,
     )
     missing, unexpected = mardm.load_state_dict(mardm_ckpt["ema_mardm"], strict=False)
     assert len(unexpected) == 0, f"Unexpected keys: {unexpected}"
@@ -99,7 +104,7 @@ def _load_models(dataset_name: str, model_name: str, model_arch: str,
     length_estimator = LengthEstimator(512, 50)
     len_ckpt = torch.load(
         pjoin(CHECKPOINTS_DIR, dataset_name, "length_estimator", "model", "finest.tar"),
-        map_location="cpu",
+        map_location=ckpt_device,
     )
     length_estimator.load_state_dict(len_ckpt["estimator"])
 
