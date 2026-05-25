@@ -60,6 +60,28 @@ torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 
 
+def make_progress_callback(job):
+    """Return a throttled on_step callback that emits RunPod progress updates.
+
+    Emits only on step==1, step==total, or every 3rd step to keep the rate
+    near ~1Hz (the API polls /status at 1Hz). Any progress_update failure is
+    swallowed so a transient RunPod hiccup never crashes the inference job.
+    """
+    def _on_step(step, total):
+        if not (step == 1 or step == total or step % 3 == 0):
+            return
+        try:
+            runpod.serverless.progress_update(job, {
+                "schema_version": 1,
+                "type": "diffusion_step",
+                "step": int(step),
+                "total": int(total),
+            })
+        except Exception as exc:
+            print(f"[MARDM] progress_update failed: {exc}")
+    return _on_step
+
+
 def _dataset_geometry(dataset_name: str):
     if dataset_name == "kit":
         return 64, 21, kit_kinematic_chain
@@ -234,6 +256,8 @@ def handler(job):
 
     m_length = (token_lens * 4).detach().cpu().tolist()
 
+    progress_cb = make_progress_callback(job)
+
     results = []
     for r in range(repeat_times):
         with torch.no_grad():
@@ -241,6 +265,7 @@ def handler(job):
                 prompts, token_lens, time_steps, cfg,
                 temperature=temperature,
                 hard_pseudo_reorder=hard_pseudo_reorder,
+                on_step=progress_cb,
             )
             pred_motions = ae.decode(pred_latents).detach().cpu().numpy()
             data = pred_motions * std + mean
